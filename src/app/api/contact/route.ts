@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+const NOTIFY_EMAIL = process.env.NOTIFY_EMAIL || "hello@runai4.me";
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -11,24 +15,21 @@ export async function POST(request: Request) {
     );
   }
 
-  // TODO: Replace with Resend or your preferred email service
-  // For now, log to server console so submissions aren't lost
-  console.log("=== NEW CONTACT FORM SUBMISSION ===");
-  console.log(`Name: ${name}`);
-  console.log(`Email: ${email}`);
-  console.log(`Company: ${company || "N/A"}`);
-  console.log(`Message: ${message}`);
-  console.log("===================================");
-
-  // Example Resend integration (uncomment when RESEND_API_KEY is set):
-  //
-  // const resend = new Resend(process.env.RESEND_API_KEY);
-  // await resend.emails.send({
-  //   from: "runai4.me <noreply@runai4.me>",
-  //   to: "hello@runai4.me",
-  //   subject: `New contact from ${name}`,
-  //   text: `Name: ${name}\nEmail: ${email}\nCompany: ${company || "N/A"}\n\n${message}`,
-  // });
+  try {
+    await resend.emails.send({
+      from: "runai4.me <onboarding@resend.dev>",
+      to: NOTIFY_EMAIL,
+      replyTo: email,
+      subject: `New contact from ${name}${company ? ` (${company})` : ""}`,
+      text: `Name: ${name}\nEmail: ${email}\nCompany: ${company || "N/A"}\n\nMessage:\n${message}`,
+    });
+  } catch (error) {
+    console.error("Failed to send contact email:", error);
+    return NextResponse.json(
+      { error: "Failed to send message" },
+      { status: 500 }
+    );
+  }
 
   return NextResponse.json({ success: true });
 }
